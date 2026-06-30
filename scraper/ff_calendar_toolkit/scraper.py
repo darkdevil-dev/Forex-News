@@ -121,8 +121,21 @@ class ForexFactoryScraper:
             next_month = (now.month % 12) + 1
             year = now.year if now.month < 12 else now.year + 1
             return datetime(year, next_month, 1).strftime("%B"), str(year), next_month
-        month_number = datetime.strptime(param.capitalize(), "%B").month
-        return param.capitalize(), str(now.year), month_number
+            
+        # Handle 'jan.2026' or 'january' format
+        if '.' in param:
+            m_str, y_str = param.split('.')
+            month_number = datetime.strptime(m_str.capitalize()[:3], "%b").month
+            month_name = datetime.strptime(m_str.capitalize()[:3], "%b").strftime("%B")
+            return month_name, y_str, month_number
+        else:
+            try:
+                month_number = datetime.strptime(param.capitalize()[:3], "%b").month
+                month_name = datetime.strptime(param.capitalize()[:3], "%b").strftime("%B")
+            except ValueError:
+                month_number = now.month
+                month_name = now.strftime("%B")
+            return month_name, str(now.year), month_number
 
     def scrape_month(
         self, month_param: str, target_timezone: str | None

@@ -1,9 +1,12 @@
 months:
+  - mar.2026
+  - apr.2026
+  - may.2026
   - this
   - next
 output_format: both
 output_dir: news
-timezone: Asia/Karachi
+timezone: Asia/Kolkata
 allowed_currencies:
   - CAD
   - EUR

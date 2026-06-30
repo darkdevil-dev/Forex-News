@@ -62,8 +62,8 @@ def parse_to_utc_iso(date_str, time_str, tz_str):
         try:
             tz = ZoneInfo(tz_str)
         except Exception:
-            # Fallback to Asia/Karachi or UTC
-            tz = ZoneInfo("Asia/Karachi")
+            # Fallback to Asia/Kolkata or UTC
+            tz = ZoneInfo("Asia/Kolkata")
             
         dt_local = datetime(year, month, day, hour, minute, tzinfo=tz)
         dt_utc = dt_local.astimezone(timezone.utc)
@@ -73,15 +73,7 @@ def parse_to_utc_iso(date_str, time_str, tz_str):
         return ""
 
 def main():
-    print("Running scraper...")
-    # Run the scraping process to write the output monthly JSON files
-    result = subprocess.run(["python", "scraper.py", "scrape"], capture_output=True, text=True)
-    if result.returncode != 0:
-        print("Scraper execution failed:")
-        print(result.stderr)
-        return
-        
-    print(result.stdout)
+    print("Processing existing scraped data from scraper/news/monthly...")
     
     # Scan the output monthly folder for generated monthly files
     output_dir = Path("news/monthly")
@@ -103,11 +95,11 @@ def main():
             
     print(f"Loaded {len(events)} raw events.")
     
-    # Filter for high-impact only (color 'red') and map fields
-    high_impact_events = []
+    # Filter for high, medium, low impact and map fields
+    all_impact_events = []
     for item in events:
         impact = item.get("impact", "").lower()
-        if impact != "red":
+        if impact not in ["red", "orange", "yellow", "ora", "yel"]:
             continue
             
         currency = item.get("currency", "").upper()
@@ -115,7 +107,7 @@ def main():
         title = item.get("event", "").strip()
         
         # Generate time in UTC ISO format
-        time_utc = parse_to_utc_iso(item.get("date"), item.get("time"), item.get("timezone", "Asia/Karachi"))
+        time_utc = parse_to_utc_iso(item.get("date"), item.get("time"), item.get("timezone", "Asia/Kolkata"))
         if not time_utc:
             # Fallback format: use day timestamp
             time_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -129,7 +121,7 @@ def main():
             "country": country,
             "flag": flag,
             "title": title,
-            "impact": "high",
+            "impact": impact,
             "time": time_utc,
             "forecast": item.get("forecast", "").strip(),
             "previous": item.get("previous", "").strip(),
@@ -137,14 +129,14 @@ def main():
             "description": "",
             "category": "Economic"
         }
-        high_impact_events.append(mapped_event)
+        all_impact_events.append(mapped_event)
         
-    print(f"Filtered to {len(high_impact_events)} high impact events.")
+    print(f"Filtered to {len(all_impact_events)} valid events.")
     
     # Prepare the news.json payload
     news_payload = {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "events": high_impact_events
+        "events": all_impact_events
     }
     
     # Compare with existing news.json to implement the commit-reducing optimization
@@ -157,8 +149,7 @@ def main():
             # Compare events list (ignoring updated_at)
             old_events = old_data.get("events", [])
             
-            # Simple content equivalence check
-            if json.dumps(old_events, sort_keys=True) == json.dumps(high_impact_events, sort_keys=True):
+            if json.dumps(old_events, sort_keys=True) == json.dumps(all_impact_events, sort_keys=True):
                 print("No changes detected in events. Skipping news.json update to prevent unnecessary commits.")
                 return
         except Exception as e:
